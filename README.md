@@ -167,8 +167,6 @@ If text is too long, the program fails with an error asking you to reduce the te
 
 ## Development
 
-### Dev setup (new machine)
-
 Required:
 
 - Go toolchain matching `go.mod` (currently Go 1.24.x)
@@ -177,36 +175,6 @@ Recommended / typically required on Linux:
 
 - CA certificates (`ca-certificates` package on most distros), because the generator fetches images over HTTPS
 - A normal libc runtime (this is a regular dynamically linked Linux ELF on typical builds)
-
-### Build
-
-```bash
-go build -o ./bin/ts-release .
-```
-
-### Run all tests
-
-```bash
-go test ./...
-```
-
-### Useful local test commands
-
-Generate into the included `test/` tree:
-
-```bash
-go build -o ./bin/ts-release .
-./bin/ts-release "test" ./test
-```
-
-Verify expected outputs exist:
-
-```bash
-test -f ./test/boot/splash.bmp
-test -f ./test/usr/share/backgrounds/tssh/background.jpg
-test -f ./test/etc/tssh.build
-cat ./test/etc/tssh.build
-```
 
 ## Fonts
 
