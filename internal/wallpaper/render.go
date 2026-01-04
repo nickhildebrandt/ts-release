@@ -21,7 +21,8 @@ var regularFontData []byte
 //go:embed fonts/DejaVuSans-Bold.ttf
 var boldFontData []byte
 
-// Render composes the final wallpaper using the given background and text labels.
+// Render composes the final wallpaper from the background image and the text labels derived from target/build ID.
+// It returns errors for a nil background, font loading failures, invalid source images (e.g. zero area), or text that is too wide for the target resolution.
 func Render(bg image.Image, targetName string, buildID string) (*image.RGBA, error) {
 	if bg == nil {
 		return nil, fmt.Errorf("render: background is nil")
@@ -101,7 +102,8 @@ func Render(bg image.Image, targetName string, buildID string) (*image.RGBA, err
 	return canvas, nil
 }
 
-// Generate is the public entry point that wires fetching, layout, and rendering together.
+// Generate is the public entry point that wires background fetching and rendering for the target resolution.
+// Network/decode failures and rendering validation errors are propagated to the caller.
 func Generate(targetName string, buildID string) (*image.RGBA, error) {
 	bg, err := FetchBackground(TargetWidth, TargetHeight)
 	if err != nil {
@@ -110,6 +112,8 @@ func Generate(targetName string, buildID string) (*image.RGBA, error) {
 	return Render(bg, targetName, buildID)
 }
 
+// resizeAndCrop scales the source image to fully cover the target area and then center-crops to the requested size.
+// It returns an error when the source image has zero width or height.
 func resizeAndCrop(src image.Image, width, height int) (*image.RGBA, error) {
 	bounds := src.Bounds()
 	if bounds.Dx() == 0 || bounds.Dy() == 0 {
@@ -131,6 +135,8 @@ func resizeAndCrop(src image.Image, width, height int) (*image.RGBA, error) {
 	return cropped, nil
 }
 
+// loadFace parses TrueType/OpenType font bytes and constructs a font.Face at the requested size.
+// It returns an error if the font data is invalid or a face cannot be created.
 func loadFace(fontData []byte, size float64) (font.Face, error) {
 	parsed, err := opentype.Parse(fontData)
 	if err != nil {
@@ -144,6 +150,8 @@ func loadFace(fontData []byte, size float64) (font.Face, error) {
 	return face, nil
 }
 
+// drawRoundedRect draws a (optionally) rounded, semi-transparent rectangle into the destination image.
+// For radius <= 0 it draws a plain rectangle, and large radii are clamped to the box dimensions.
 func drawRoundedRect(dst *image.RGBA, rect image.Rectangle, radius int, col color.NRGBA) {
 	if radius <= 0 {
 		stddraw.Draw(dst, rect, image.NewUniform(col), image.Point{}, stddraw.Over)
@@ -158,6 +166,8 @@ func drawRoundedRect(dst *image.RGBA, rect image.Rectangle, radius int, col colo
 	stddraw.DrawMask(dst, rect, image.NewUniform(col), image.Point{}, mask, image.Point{}, stddraw.Over)
 }
 
+// drawSeparator draws the horizontal separator line inside the text box and sizes it to the wider text.
+// Overly large widths are clamped so the line never extends beyond the box.
 func drawSeparator(dst *image.RGBA, layout Layout, col color.NRGBA, textWidth int) {
 	lineHeight := layout.SeparatorThickness
 	maxWidth := layout.BoxWidth - 2*layout.Padding
@@ -175,6 +185,8 @@ func drawSeparator(dst *image.RGBA, layout Layout, col color.NRGBA, textWidth in
 	stddraw.Draw(dst, lineRect, image.NewUniform(col), image.Point{}, stddraw.Over)
 }
 
+// drawText renders text at a fixed pixel position into the destination image.
+// It returns an error when the font face is nil; otherwise drawing is best-effort.
 func drawText(dst *image.RGBA, face font.Face, text string, x, y int, col color.NRGBA) error {
 	if face == nil {
 		return fmt.Errorf("render: font face is nil")
@@ -189,6 +201,8 @@ func drawText(dst *image.RGBA, face font.Face, text string, x, y int, col color.
 	return nil
 }
 
+// validateTextWidth checks whether the text fits within the allowed maximum width.
+// It returns a user-facing error when the width is invalid or the text exceeds the limit.
 func validateTextWidth(label string, face font.Face, text string, maxWidth int) error {
 	if maxWidth <= 0 {
 		return fmt.Errorf("render: %s text is too long for the selected image resolution, please reduce the text", label)
@@ -200,6 +214,8 @@ func validateTextWidth(label string, face font.Face, text string, maxWidth int) 
 	return nil
 }
 
+// maxTextWidthForImage computes the maximum allowed text width from the image width minus a proportional margin.
+// It returns an error if the image width is invalid or the resulting space is not positive.
 func maxTextWidthForImage(imageWidth int) (int, error) {
 	if imageWidth <= 0 {
 		return 0, fmt.Errorf("render: invalid image width %d", imageWidth)
@@ -212,6 +228,8 @@ func maxTextWidthForImage(imageWidth int) (int, error) {
 	return maxWidth, nil
 }
 
+// fillRoundedMask fills an alpha mask for a rounded rectangle within the mask image bounds.
+// It still produces a consistent mask for small bounds or large radii.
 func fillRoundedMask(mask *image.Alpha, radius int) {
 	b := mask.Bounds()
 	w, h := b.Dx(), b.Dy()

@@ -17,6 +17,8 @@ type rewriteTransport struct {
 	rewriteURL *url.URL
 }
 
+// RoundTrip rewrites requests to wallhaven.cc to the local test server without changing path/query.
+// This enables real http.Get calls in the code while avoiding external network access.
 func (t *rewriteTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	if req.URL.Host == "wallhaven.cc" {
 		clone := req.Clone(req.Context())
@@ -28,6 +30,8 @@ func (t *rewriteTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 	return t.base.RoundTrip(req)
 }
 
+// mustPNGBytes produces a small valid PNG byte slice for mocked HTTP responses.
+// The test fails fast if PNG encoding unexpectedly fails.
 func mustPNGBytes(t *testing.T) []byte {
 	t.Helper()
 	img := image.NewRGBA(image.Rect(0, 0, 4, 3))
@@ -39,6 +43,8 @@ func mustPNGBytes(t *testing.T) []byte {
 	return buf.Bytes()
 }
 
+// withHTTPRedirectToServer temporarily replaces http.DefaultTransport to redirect wallhaven.cc to an httptest.Server.
+// The original transport is restored via t.Cleanup to avoid cross-test interference.
 func withHTTPRedirectToServer(t *testing.T, serverURL string) {
 	t.Helper()
 	u, err := url.Parse(serverURL)
@@ -57,6 +63,8 @@ func withHTTPRedirectToServer(t *testing.T, serverURL string) {
 	})
 }
 
+// TestFetchBackground_Success_MockedHTTP verifies the happy path: search returns an image URL and the image is decoded.
+// The test fails if rewriting, JSON handling, or image decoding does not behave as expected.
 func TestFetchBackground_Success_MockedHTTP(t *testing.T) {
 	pngBytes := mustPNGBytes(t)
 
@@ -92,6 +100,8 @@ func TestFetchBackground_Success_MockedHTTP(t *testing.T) {
 	}
 }
 
+// TestFetchBackground_NoResults_Error expects an error when the search API returns no image data.
+// It also checks that no image is returned and the error message describes the case.
 func TestFetchBackground_NoResults_Error(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -113,6 +123,8 @@ func TestFetchBackground_NoResults_Error(t *testing.T) {
 	}
 }
 
+// TestFetchBackground_MalformedJSON_Error expects an error when the search API returns malformed JSON.
+// This ensures decode errors are propagated cleanly.
 func TestFetchBackground_MalformedJSON_Error(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -131,6 +143,8 @@ func TestFetchBackground_MalformedJSON_Error(t *testing.T) {
 	}
 }
 
+// TestFetchBackground_ImageDecodeFails_Error expects an error when the image URL returns non-decodable image bytes.
+// This verifies that image.Decode failures are reported correctly in the fetch path.
 func TestFetchBackground_ImageDecodeFails_Error(t *testing.T) {
 	var server *httptest.Server
 	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -160,6 +174,8 @@ func TestFetchBackground_ImageDecodeFails_Error(t *testing.T) {
 	}
 }
 
+// TestFetchBackground_InvalidSize_Error expects an error for invalid target dimensions.
+// This prevents pointless requests and documents the validation behavior.
 func TestFetchBackground_InvalidSize_Error(t *testing.T) {
 	_, err := FetchBackground(0, 1080)
 	if err == nil {

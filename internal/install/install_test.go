@@ -12,6 +12,8 @@ import (
 	"golang.org/x/image/bmp"
 )
 
+// sampleImage builds a small deterministic test image with multiple colors.
+// It is used as input for Install tests and must be encodable/decodable.
 func sampleImage() image.Image {
 	img := image.NewRGBA(image.Rect(0, 0, 3, 2))
 	img.Set(0, 0, color.RGBA{255, 0, 0, 255})
@@ -23,6 +25,8 @@ func sampleImage() image.Image {
 	return img
 }
 
+// TestInstall_SucceedsAndWritesExpectedPaths verifies that Install creates all expected files and that formats are decodable.
+// The test fails if paths are missing or the written BMP/JPEG is not valid.
 func TestInstall_SucceedsAndWritesExpectedPaths(t *testing.T) {
 	root := t.TempDir()
 	img := sampleImage()
@@ -76,6 +80,8 @@ func TestInstall_SucceedsAndWritesExpectedPaths(t *testing.T) {
 	}
 }
 
+// TestInstall_MissingRootFS_Error expects an error when the rootfs directory does not exist.
+// It also checks that the error message reflects the missing-path case.
 func TestInstall_MissingRootFS_Error(t *testing.T) {
 	missing := filepath.Join(t.TempDir(), "does-not-exist")
 	if err := Install(missing, sampleImage(), "b"); err == nil {
@@ -85,6 +91,8 @@ func TestInstall_MissingRootFS_Error(t *testing.T) {
 	}
 }
 
+// TestInstall_RootFSIsFile_Error expects an error when the rootfs path points to a file instead of a directory.
+// This ensures Install does not silently write into an invalid target.
 func TestInstall_RootFSIsFile_Error(t *testing.T) {
 	root := t.TempDir()
 	p := filepath.Join(root, "rootfs")
@@ -98,6 +106,8 @@ func TestInstall_RootFSIsFile_Error(t *testing.T) {
 	}
 }
 
+// TestInstall_ImageNil_Error expects an error when Install is called with a nil image.
+// This prevents later panics in the encoder paths.
 func TestInstall_ImageNil_Error(t *testing.T) {
 	root := t.TempDir()
 	if err := Install(root, nil, "b"); err == nil {
@@ -107,6 +117,8 @@ func TestInstall_ImageNil_Error(t *testing.T) {
 	}
 }
 
+// TestInstall_EmptyBuildID_CurrentBehavior documents that an empty build ID is currently allowed.
+// It expects that exactly a newline is written to the metadata file.
 func TestInstall_EmptyBuildID_CurrentBehavior(t *testing.T) {
 	root := t.TempDir()
 	if err := Install(root, sampleImage(), ""); err != nil {
@@ -122,6 +134,8 @@ func TestInstall_EmptyBuildID_CurrentBehavior(t *testing.T) {
 	}
 }
 
+// TestInstall_OverwritesExistingFiles ensures that Install overwrites existing output files.
+// The test fails if old contents remain or the new files are not decodable.
 func TestInstall_OverwritesExistingFiles(t *testing.T) {
 	root := t.TempDir()
 	img := sampleImage()
@@ -183,6 +197,8 @@ func TestInstall_OverwritesExistingFiles(t *testing.T) {
 	}
 }
 
+// TestInstall_ReadOnlyRootFS_Error expects an error when the rootfs is not writable.
+// This verifies that Install propagates write failures.
 func TestInstall_ReadOnlyRootFS_Error(t *testing.T) {
 	root := t.TempDir()
 	if err := os.Chmod(root, 0o555); err != nil {

@@ -15,7 +15,8 @@ const (
 	filePerm = 0o644
 )
 
-// Install writes pre-generated artifacts into the provided root filesystem.
+// Install writes the generated artifacts into the given rootfs and creates missing target directories.
+// It returns an error for invalid rootfs paths, a nil image, or any write/encode failure.
 func Install(rootFS string, img image.Image, buildID string) error {
 	if rootFS == "" {
 		return fmt.Errorf("install: rootfs path is empty")
@@ -60,6 +61,8 @@ func Install(rootFS string, img image.Image, buildID string) error {
 	return nil
 }
 
+// writeBMP writes the image as a BMP to the target path and overwrites any existing file.
+// It returns an error if the file cannot be opened/created or the BMP encoding fails.
 func writeBMP(path string, img image.Image) error {
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, filePerm)
 	if err != nil {
@@ -73,6 +76,8 @@ func writeBMP(path string, img image.Image) error {
 	return nil
 }
 
+// writeJPEG writes the image as a JPEG to the target path and overwrites any existing file.
+// It returns an error if opening/writing fails or if the JPEG encoding fails.
 func writeJPEG(path string, img image.Image) error {
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, filePerm)
 	if err != nil {
@@ -87,6 +92,8 @@ func writeJPEG(path string, img image.Image) error {
 	return nil
 }
 
+// writeText writes plain text to a file and overwrites any existing file.
+// It returns an error if the file cannot be created or the write fails.
 func writeText(path string, content string) error {
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, filePerm)
 	if err != nil {

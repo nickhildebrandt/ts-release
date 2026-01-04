@@ -40,7 +40,8 @@ const (
 	boxOpacityDefault = 200
 )
 
-// ComputeLayoutForText derives layout from image size and measured text using font metrics.
+// ComputeLayoutForText computes all layout geometry from the image size and measured text widths using font metrics.
+// It falls back to default dimensions for non-positive sizes and returns an error for nil font faces.
 func ComputeLayoutForText(width, height int, titleFace, subtitleFace font.Face, title, subtitle string) (Layout, error) {
 	if width <= 0 || height <= 0 {
 		width = TargetWidth
@@ -108,6 +109,8 @@ func ComputeLayoutForText(width, height int, titleFace, subtitleFace font.Face, 
 	}, nil
 }
 
+// minInt returns the smaller of two integers.
+// It performs a simple comparison and does not special-case overflow.
 func minInt(a, b int) int {
 	if a < b {
 		return a
@@ -115,6 +118,8 @@ func minInt(a, b int) int {
 	return b
 }
 
+// maxInt returns the larger of two integers.
+// It performs a simple comparison and does not special-case overflow.
 func maxInt(a, b int) int {
 	if a > b {
 		return a

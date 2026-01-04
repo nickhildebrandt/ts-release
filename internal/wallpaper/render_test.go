@@ -9,6 +9,8 @@ import (
 	"golang.org/x/image/font"
 )
 
+// solidBG produces a solid-color background image for render tests.
+// It must be deterministic to keep pixel-based assertions stable.
 func solidBG(w, h int, c color.RGBA) image.Image {
 	img := image.NewRGBA(image.Rect(0, 0, w, h))
 	for y := 0; y < h; y++ {
@@ -19,6 +21,8 @@ func solidBG(w, h int, c color.RGBA) image.Image {
 	return img
 }
 
+// titleAndSubtitleFor mirrors Render's title/subtitle logic to keep layout and separator checks consistent.
+// It trims whitespace and applies defaults when inputs are empty.
 func titleAndSubtitleFor(targetName, buildID string) (string, string) {
 	title := strings.TrimSpace(targetName)
 	if title == "" {
@@ -33,6 +37,8 @@ func titleAndSubtitleFor(targetName, buildID string) (string, string) {
 	return title, subtitle
 }
 
+// mustRenderFaces loads fonts at the exact sizes Render uses for the target resolution.
+// The test fails fast if the embedded font data cannot be parsed.
 func mustRenderFaces(t *testing.T) (font.Face, font.Face) {
 	t.Helper()
 	titleSize := float64(TargetHeight) * 0.06
@@ -49,6 +55,8 @@ func mustRenderFaces(t *testing.T) (font.Face, font.Face) {
 	return titleFace, subtitleFace
 }
 
+// mustMaxTextWidth computes the maximum allowed text width for the target resolution.
+// The test fails fast if the computation unexpectedly fails.
 func mustMaxTextWidth(t *testing.T) int {
 	t.Helper()
 	maxW, err := maxTextWidthForImage(TargetWidth)
@@ -58,6 +66,8 @@ func mustMaxTextWidth(t *testing.T) int {
 	return maxW
 }
 
+// findLenBoundary finds two deterministic strings where one fits and the next (one extra char) does not.
+// The test fails if no stable boundary can be found, which would indicate changed metrics or rules.
 func findLenBoundary(t *testing.T, label string, face font.Face, prefix string, wantLen int, maxWidth int) (ok string, tooLong string) {
 	t.Helper()
 	if wantLen <= 0 {
@@ -90,6 +100,8 @@ func findLenBoundary(t *testing.T, label string, face font.Face, prefix string, 
 	return "", ""
 }
 
+// findTooLongText constructs text that reliably fails validateTextWidth to make error paths reproducible.
+// If even very long candidates still pass, the test fails because validation is not effective.
 func findTooLongText(t *testing.T, label string, face font.Face, prefix string, maxWidth int) string {
 	t.Helper()
 	// Find a deterministic text that fails validateTextWidth by increasing width.
@@ -103,6 +115,8 @@ func findTooLongText(t *testing.T, label string, face font.Face, prefix string, 
 	return ""
 }
 
+// TestRender_ReturnsTargetResolution ensures Render always returns the target resolution.
+// The test fails if scaling/cropping or canvas creation produces incorrect bounds.
 func TestRender_ReturnsTargetResolution(t *testing.T) {
 	bg := solidBG(64, 64, color.RGBA{0, 0, 0, 255})
 	img, err := Render(bg, "test", "build-1")
@@ -118,6 +132,8 @@ func TestRender_ReturnsTargetResolution(t *testing.T) {
 	}
 }
 
+// TestRender_EmptyTargetNameAndSubtitle_DefaultsAndNoPanic expects defaults for empty/whitespace inputs and no panics.
+// The test fails if Render does not handle empty strings robustly.
 func TestRender_EmptyTargetNameAndSubtitle_DefaultsAndNoPanic(t *testing.T) {
 	bg := solidBG(16, 16, color.RGBA{0, 0, 0, 255})
 	img, err := Render(bg, "   ", "")
@@ -129,6 +145,8 @@ func TestRender_EmptyTargetNameAndSubtitle_DefaultsAndNoPanic(t *testing.T) {
 	}
 }
 
+// TestRender_ErrorsOnNilBackground expects an error when no background image is provided.
+// This ensures Render validates early and does not panic later.
 func TestRender_ErrorsOnNilBackground(t *testing.T) {
 	img, err := Render(nil, "x", "y")
 	if err == nil {
@@ -142,6 +160,8 @@ func TestRender_ErrorsOnNilBackground(t *testing.T) {
 	}
 }
 
+// TestRender_TextTooLong_Boundaries_26vs27 tests text width validation near a reproducible boundary.
+// It expects near-limit titles to pass and slightly-too-wide titles/subtitles to fail cleanly.
 func TestRender_TextTooLong_Boundaries_26vs27(t *testing.T) {
 	bg := solidBG(32, 32, color.RGBA{0, 0, 0, 255})
 	titleFace, subtitleFace := mustRenderFaces(t)
@@ -185,6 +205,8 @@ func TestRender_TextTooLong_Boundaries_26vs27(t *testing.T) {
 	}
 }
 
+// TestDrawSeparator_WidthUsesWiderOfTitleOrSubtitle verifies the separator line width follows the wider text line.
+// The test fails if the line is too short/long or drawn outside the box.
 func TestDrawSeparator_WidthUsesWiderOfTitleOrSubtitle(t *testing.T) {
 	bg := solidBG(32, 32, color.RGBA{0, 0, 0, 255})
 

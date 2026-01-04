@@ -7,6 +7,8 @@ import (
 	"golang.org/x/image/font"
 )
 
+// mustFacesForHeight loads test font faces whose sizes are scaled relative to the given image height.
+// The test fails fast if the embedded fonts cannot be loaded.
 func mustFacesForHeight(t *testing.T, height int) (titleFace font.Face, subtitleFace font.Face) {
 	t.Helper()
 
@@ -24,6 +26,8 @@ func mustFacesForHeight(t *testing.T, height int) (titleFace font.Face, subtitle
 	return bold, regular
 }
 
+// TestComputeLayoutForText_StandardResolution_ExactMath verifies that the layout formulas match expected values for the standard resolution.
+// The test fails on any mismatch in padding, box geometry, or text positions.
 func TestComputeLayoutForText_StandardResolution_ExactMath(t *testing.T) {
 	titleFace, subtitleFace := mustFacesForHeight(t, TargetHeight)
 
@@ -100,6 +104,8 @@ func TestComputeLayoutForText_StandardResolution_ExactMath(t *testing.T) {
 	}
 }
 
+// TestComputeLayoutForText_ScalesWithResolution checks that key layout values scale sensibly with resolution.
+// It asserts plausibility bounds for positions, thickness, and radii.
 func TestComputeLayoutForText_ScalesWithResolution(t *testing.T) {
 	type tc struct{ w, h int }
 	cases := []tc{{w: 3840, h: 2160}, {w: 1920, h: 1080}, {w: 640, h: 480}, {w: 7680, h: 4320}}
@@ -140,6 +146,8 @@ func TestComputeLayoutForText_ScalesWithResolution(t *testing.T) {
 	}
 }
 
+// TestComputeLayoutForText_BoxWidthUsesWiderText ensures the box width is based on the wider of title or subtitle.
+// The test fails if the computed box would truncate text.
 func TestComputeLayoutForText_BoxWidthUsesWiderText(t *testing.T) {
 	w, h := 3840, 2160
 	titleFace, subtitleFace := mustFacesForHeight(t, h)
@@ -188,6 +196,8 @@ func TestComputeLayoutForText_BoxWidthUsesWiderText(t *testing.T) {
 	}
 }
 
+// TestComputeLayoutForText_ErrorsOnNilFaces expects an error when no font faces are provided.
+// This documents the minimum precondition for layout computation.
 func TestComputeLayoutForText_ErrorsOnNilFaces(t *testing.T) {
 	_, err := ComputeLayoutForText(3840, 2160, nil, nil, "t", "s")
 	if err == nil {

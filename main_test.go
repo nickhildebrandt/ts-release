@@ -32,6 +32,8 @@ var buildOnce sync.Once
 var builtBinaryPath string
 var buildErr error
 
+// buildBinary builds the current module once and returns the path to the test binary.
+// The test fails if `go build` fails or the temporary output directory cannot be created.
 func buildBinary(t *testing.T) string {
 	t.Helper()
 	buildOnce.Do(func() {
@@ -56,6 +58,8 @@ func buildBinary(t *testing.T) string {
 	return builtBinaryPath
 }
 
+// runCmd runs the test binary with a timeout and returns the exit code plus stdout/stderr for assertions.
+// The test fails on timeouts or unexpected execution errors (e.g. not an ExitError).
 func runCmd(t *testing.T, bin string, args ...string) (exitCode int, stdout string, stderr string) {
 	t.Helper()
 
@@ -84,6 +88,8 @@ func runCmd(t *testing.T, bin string, args ...string) (exitCode int, stdout stri
 	return ee.ExitCode(), stdout, stderr
 }
 
+// mustJPEGBytes produces a small valid JPEG byte slice for proxy HTTP responses.
+// The test fails fast if JPEG encoding unexpectedly fails.
 func mustJPEGBytes(t *testing.T) []byte {
 	t.Helper()
 	img := image.NewRGBA(image.Rect(0, 0, 4, 3))
@@ -102,6 +108,8 @@ type mitmProxy struct {
 	imgBytes []byte
 }
 
+// newMITMProxy starts a local CONNECT-capable TLS MITM proxy and exposes a test CA certificate.
+// The test fails if keys/certificates cannot be created or the listener cannot start.
 func newMITMProxy(t *testing.T) *mitmProxy {
 	t.Helper()
 
@@ -162,8 +170,12 @@ func newMITMProxy(t *testing.T) *mitmProxy {
 	return p
 }
 
+// close shuts down the proxy listener so background goroutines can exit.
+// It intentionally ignores close errors because the listener is being torn down in a test context.
 func (p *mitmProxy) close() { _ = p.ln.Close() }
 
+// serve accepts new TCP connections and handles them concurrently.
+// The loop exits once Accept fails due to the listener being closed.
 func (p *mitmProxy) serve() {
 	for {
 		conn, err := p.ln.Accept()
@@ -174,6 +186,8 @@ func (p *mitmProxy) serve() {
 	}
 }
 
+// handleConn implements a minimal HTTP CONNECT tunnel and terminates TLS for wallhaven.cc.
+// For unexpected requests or handshake/parse failures, it closes the connection without responding further.
 func (p *mitmProxy) handleConn(conn net.Conn) {
 	defer conn.Close()
 
@@ -203,6 +217,8 @@ func (p *mitmProxy) handleConn(conn net.Conn) {
 	p.respond(tlsConn, r)
 }
 
+// respond serves either a Wallhaven-like search response or a JPEG for the image path.
+// Unknown paths return 404 so fetch/decode error paths can be tested robustly.
 func (p *mitmProxy) respond(w io.Writer, r *http.Request) {
 	path := r.URL.Path
 	if strings.HasPrefix(path, "/api/v1/search") {
@@ -220,6 +236,8 @@ func (p *mitmProxy) respond(w io.Writer, r *http.Request) {
 	fmt.Fprintf(w, "HTTP/1.1 404 Not Found\r\nContent-Type: text/plain\r\nContent-Length: %d\r\nConnection: close\r\n\r\n%s", len(body), body)
 }
 
+// TestMain_MissingArgs_UsageAndErrorExit expects usage on stderr and a non-zero exit when arguments are missing.
+// This ensures the CLI reports invalid invocations early and clearly.
 func TestMain_MissingArgs_UsageAndErrorExit(t *testing.T) {
 	bin := buildBinary(t)
 	code, _, stderr := runCmd(t, bin)
@@ -231,6 +249,8 @@ func TestMain_MissingArgs_UsageAndErrorExit(t *testing.T) {
 	}
 }
 
+// TestMain_NonExistingRootFS_UsageAndErrorExit expects usage and a non-zero exit when the rootfs directory does not exist.
+// The test fails if the CLI accepts an invalid path or does not print help.
 func TestMain_NonExistingRootFS_UsageAndErrorExit(t *testing.T) {
 	bin := buildBinary(t)
 	code, _, stderr := runCmd(t, bin, "target", filepath.Join(t.TempDir(), "missing"))
@@ -242,6 +262,8 @@ func TestMain_NonExistingRootFS_UsageAndErrorExit(t *testing.T) {
 	}
 }
 
+// TestMain_Help_PrintsUsageAndExits documents current "--help" behavior: it prints usage and exits.
+// The test fails if usage is missing or the process unexpectedly succeeds.
 func TestMain_Help_PrintsUsageAndExits(t *testing.T) {
 	bin := buildBinary(t)
 	code, _, stderr := runCmd(t, bin, "--help")
@@ -253,6 +275,8 @@ func TestMain_Help_PrintsUsageAndExits(t *testing.T) {
 	}
 }
 
+// TestMain_Success_ValidInput_NoRealNetwork runs the CLI end-to-end and expects output files to appear in the rootfs.
+// Network access is intercepted via a local MITM proxy; the test fails on timeouts or missing artifacts.
 func TestMain_Success_ValidInput_NoRealNetwork(t *testing.T) {
 	bin := buildBinary(t)
 	rootFS := t.TempDir()

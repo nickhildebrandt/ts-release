@@ -9,6 +9,8 @@ import (
 	"github.com/nickhildebrandt/ts-release/internal/wallpaper"
 )
 
+// main is the CLI entry point that generates a release wallpaper and installs it into the given rootfs.
+// It prints usage or errors to stderr and exits with code 1 for invalid input or any failure.
 func main() {
 	if len(os.Args) != 3 {
 		usage()
@@ -43,6 +45,8 @@ func main() {
 	}
 }
 
+// usage prints a short help message for the CLI to stderr.
+// It is used for invalid invocations and intentionally only shows the expected command syntax.
 func usage() {
 	fmt.Fprintln(os.Stderr, "Usage: ts-release <target-name> <rootfs-dir>")
 }
