@@ -20,6 +20,9 @@ Release-ready build:
 go build -o ts-release .
 ```
 
+Prebuilt releases are published on the GitHub Releases page:
+https://github.com/nickhildebrandt/ts-release/releases
+
 Generate artifacts into an existing rootfs directory:
 
 ```bash
@@ -173,14 +176,6 @@ Recommended / typically required on Linux:
 
 - CA certificates (`ca-certificates` package on most distros), because the generator fetches images over HTTPS
 - A normal libc runtime (this is a regular dynamically linked Linux ELF on typical builds)
-
-Production (Release) Build:
-
-```bash
-go build -o ts-release
-```
-
-Use this command for production releases: it builds an optimized binary with Go's default compiler optimizations enabled.
 
 Formatting:
 
