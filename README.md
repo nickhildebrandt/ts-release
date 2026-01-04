@@ -14,7 +14,7 @@ Given a *target name* and a *root filesystem directory*, it:
 
 ## Quick start
 
-Build:
+Release-ready build:
 
 ```bash
 go build -o ts-release .
@@ -73,8 +73,6 @@ File details:
 	- Intended use: GNOME desktop wallpaper
 - `etc/tssh.build`
 	- Content: build release number as a single line, `UTC RFC3339` (e.g. `2026-01-04T13:35:13Z`)
-
-The repository also includes a `test/` folder that mirrors the expected installed locations so you can run the tool against it locally.
 
 ## Build release number
 
@@ -175,6 +173,60 @@ Recommended / typically required on Linux:
 
 - CA certificates (`ca-certificates` package on most distros), because the generator fetches images over HTTPS
 - A normal libc runtime (this is a regular dynamically linked Linux ELF on typical builds)
+
+Production (Release) Build:
+
+```bash
+go build -o ts-release
+```
+
+Use this command for production releases: it builds an optimized binary with Go's default compiler optimizations enabled.
+
+Formatting:
+
+```bash
+gofmt -w .
+```
+
+This formats all Go source files under the current directory (recursively) and rewrites them in place.
+
+Tests:
+
+Run the full test suite:
+
+```bash
+go test ./...
+```
+
+Test coverage overview:
+
+| Test function | What it verifies |
+| --- | --- |
+| `TestMain_MissingArgs_UsageAndErrorExit` | The CLI prints usage to stderr and exits non-zero when invoked with missing arguments. |
+| `TestMain_NonExistingRootFS_UsageAndErrorExit` | The CLI rejects a non-existent rootfs path and prints usage with a non-zero exit. |
+| `TestMain_Help_PrintsUsageAndExits` | Current `--help` behavior: usage is printed and the process exits (currently non-zero). |
+| `TestMain_Success_ValidInput_NoRealNetwork` | End-to-end run succeeds and writes expected artifacts into rootfs while avoiding real network via a local MITM proxy. |
+| `TestInstall_SucceedsAndWritesExpectedPaths` | `Install` writes the expected output files and the BMP/JPEG outputs are decodable. |
+| `TestInstall_MissingRootFS_Error` | `Install` returns an error when the rootfs directory does not exist. |
+| `TestInstall_RootFSIsFile_Error` | `Install` returns an error when the rootfs path points to a file rather than a directory. |
+| `TestInstall_ImageNil_Error` | `Install` returns an error when called with a nil image. |
+| `TestInstall_EmptyBuildID_CurrentBehavior` | Current behavior: an empty build ID is allowed and results in a single newline in `etc/tssh.build`. |
+| `TestInstall_OverwritesExistingFiles` | `Install` overwrites existing output files and rewrites them into valid formats. |
+| `TestInstall_ReadOnlyRootFS_Error` | `Install` fails when the rootfs is not writable and propagates the write error. |
+| `TestFetchBackground_Success_MockedHTTP` | `FetchBackground` succeeds when the Wallhaven API and image download are mocked via a local server. |
+| `TestFetchBackground_NoResults_Error` | `FetchBackground` returns an error when the search response contains no results. |
+| `TestFetchBackground_MalformedJSON_Error` | `FetchBackground` returns an error when the search response JSON is malformed. |
+| `TestFetchBackground_ImageDecodeFails_Error` | `FetchBackground` returns an error when the downloaded image bytes cannot be decoded. |
+| `TestFetchBackground_InvalidSize_Error` | `FetchBackground` rejects invalid target dimensions (e.g. width/height <= 0). |
+| `TestComputeLayoutForText_StandardResolution_ExactMath` | Layout math for QHD matches the expected values exactly (padding/box/text positions). |
+| `TestComputeLayoutForText_ScalesWithResolution` | Layout values scale sensibly across multiple resolutions and remain within basic plausibility bounds. |
+| `TestComputeLayoutForText_BoxWidthUsesWiderText` | Box width accounts for the wider of title or subtitle text widths plus padding. |
+| `TestComputeLayoutForText_ErrorsOnNilFaces` | Layout computation returns an error when font faces are nil. |
+| `TestRender_ReturnsTargetResolution` | `Render` always produces an image with the target resolution. |
+| `TestRender_EmptyTargetNameAndSubtitle_DefaultsAndNoPanic` | Empty/whitespace target name and build ID use defaults and do not panic. |
+| `TestRender_ErrorsOnNilBackground` | `Render` returns an error and no image for a nil background. |
+| `TestRender_TextTooLong_Boundaries_26vs27` | Text width validation rejects too-wide titles/subtitles near a reproducible boundary. |
+| `TestDrawSeparator_WidthUsesWiderOfTitleOrSubtitle` | Separator line width follows the wider of title/subtitle and remains within the overlay box. |
 
 ## Fonts
 
