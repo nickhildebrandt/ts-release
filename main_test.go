@@ -249,16 +249,23 @@ func TestMain_MissingArgs_UsageAndErrorExit(t *testing.T) {
 	}
 }
 
-// TestMain_NonExistingRootFS_UsageAndErrorExit expects usage and a non-zero exit when the rootfs directory does not exist.
-// The test fails if the CLI accepts an invalid path or does not print help.
+// TestMain_NonExistingRootFS_UsageAndErrorExit expects a declarative error and a non-zero exit when the rootfs directory does not exist.
+// The test fails if the CLI prints usage for this case or if the error message is missing.
 func TestMain_NonExistingRootFS_UsageAndErrorExit(t *testing.T) {
 	bin := buildBinary(t)
-	code, _, stderr := runCmd(t, bin, "target", filepath.Join(t.TempDir(), "missing"))
+	missing := filepath.Join(t.TempDir(), "missing")
+	code, _, stderr := runCmd(t, bin, "target", missing)
 	if code == 0 {
 		t.Fatalf("expected non-zero exit")
 	}
-	if !strings.Contains(stderr, "Usage: ts-release") {
-		t.Fatalf("expected usage in stderr, got: %q", stderr)
+	if strings.Contains(stderr, "Usage: ts-release") {
+		t.Fatalf("did not expect usage in stderr for missing rootfs, got: %q", stderr)
+	}
+	if !strings.Contains(stderr, "rootfs directory does not exist") {
+		t.Fatalf("expected missing rootfs error in stderr, got: %q", stderr)
+	}
+	if !strings.Contains(stderr, missing) {
+		t.Fatalf("expected missing rootfs path in stderr, got: %q", stderr)
 	}
 }
 

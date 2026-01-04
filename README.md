@@ -203,7 +203,7 @@ Test coverage overview:
 | Test function | What it verifies |
 | --- | --- |
 | `TestMain_MissingArgs_UsageAndErrorExit` | The CLI prints usage to stderr and exits non-zero when invoked with missing arguments. |
-| `TestMain_NonExistingRootFS_UsageAndErrorExit` | The CLI rejects a non-existent rootfs path and prints usage with a non-zero exit. |
+| `TestMain_NonExistingRootFS_UsageAndErrorExit` | The CLI rejects a non-existent rootfs path, prints a declarative error, and exits non-zero. |
 | `TestMain_Help_PrintsUsageAndExits` | Current `--help` behavior: usage is printed and the process exits (currently non-zero). |
 | `TestMain_Success_ValidInput_NoRealNetwork` | End-to-end run succeeds and writes expected artifacts into rootfs while avoiding real network via a local MITM proxy. |
 | `TestInstall_SucceedsAndWritesExpectedPaths` | `Install` writes the expected output files and the BMP/JPEG outputs are decodable. |

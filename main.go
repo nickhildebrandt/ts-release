@@ -26,7 +26,15 @@ func main() {
 	}
 
 	info, err := os.Stat(rootFS)
-	if err != nil || !info.IsDir() {
+	if err != nil {
+		if os.IsNotExist(err) {
+			fmt.Fprintf(os.Stderr, "rootfs directory does not exist: %s\n", rootFS)
+			os.Exit(1)
+		}
+		usage()
+		os.Exit(1)
+	}
+	if !info.IsDir() {
 		usage()
 		os.Exit(1)
 	}
